@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>5 channels</title>
+    <style>
+        #volume {
+            height: 340px;
+            padding: 5px 20px;
+            display: inline-block;
+            vertical-align: top;
+            border: 1px solid;
+        }
+
+        #controls {
+            height: 340px;
+            padding: 5px 20px;
+            display: inline-block;
+            vertical-align: top;
+            margin-left: 50px;
+            border: 1px solid;
+        }
+
+        #playButton {
+            margin-top: 5px;
+            display: block;
+            font-size: 20px;
+            font-weight: bold;
+        }
+
+        #audio_source {
+            display: block;
+            margin-top: 30px;
+            min-width: 1184px;
+        }
+
+        label {
+            width: 100px;
+            display: inline-block;
+        }
+
+        .bar {
+            width: 50px;
+            position: relative;
+            float: left;
+            margin: 20px;
+            height: calc(100% - 80px);
+            text-align: center;
+        }
+
+        .fill {
+            background: LawnGreen;
+            height: 20px;
+            width: 100%;
+            position: absolute;
+            bottom: 0;
+            padding: 5px;
+            color: rgba(0, 0, 0, .75);
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+        }
+    </style>
+</head>
+<body>
+<div id="volume">
+    <h3>Уровни громкости каналов</h3>
+    <div class="bar" id="frontLeftBar">
+        Front left
+        <div class="fill" id="frontLeftBarFill"></div>
+    </div>
+    <div class="bar" id="frontRightBar">
+        Front right
+        <div class="fill" id="frontRightBarFill"></div>
+    </div>
+    <div class="bar" id="centerBar">
+        Center
+        <div class="fill" id="centerBarFill"></div>
+    </div>
+    <div class="bar" id="subBar">
+        Sub
+        <div class="fill" id="subBarFill"></div>
+    </div>
+    <div class="bar" id="backLeftBar">
+        Back left
+        <div class="fill" id="backLeftBarFill"></div>
+    </div>
+    <div class="bar" id="backRightBar">
+        Back right
+        <div class="fill" id="backRightBarFill"></div>
+    </div>
+</div>
+
+<div id="controls">
+    <h3>Задержка начала воспроизведения (в секундах) и громкость</h3>
+    <label for="frontLeft">Front left</label>
+    <input type="number" min=0 max=10 step=.01 value=0 id="frontLeftDelay"/>
+    <input type="range" min=0 max=1 step=.01 value=1 id="frontLeft"/>
+    <br/>
+
+    <label for="frontRight">Front right</label>
+    <input type="number" min=0 max=10 step=.01 value=1 id="frontRightDelay"/>
+    <input type="range" min=0 max=1 step=.01 value=1 id="frontRight"/>
+    <br/>
+
+    <label for="center">Center</label>
+    <input type="number" min=0 max=10 step=.01 value=2 id="centerDelay"/>
+    <input type="range" min=0 max=1 step=.01 value=1 id="center"/>
+    <br/>
+
+    <label for="sub">Sub</label>
+    <input type="number" min=0 max=10 step=.01 value=3 id="subDelay"/>
+    <input type="range" min=0 max=1 step=.01 value=1 id="sub"/>
+    <br/>
+
+    <label for="backLeft">Back left</label>
+    <input type="number" min=0 max=10 step=.01 value=4 id="backLeftDelay"/>
+    <input type="range" min=0 max=1 step=.01 value=1 id="backLeft"/>
+    <br/>
+
+    <label for="backRight">Back right</label>
+    <input type="number" min=0 max=10 step=.01 value=5 id="backRightDelay"/>
+    <input type="range" min=0 max=1 step=.01 value=1 id="backRight"/>
+</div>
+
+<input id="audio_source" type="text" value="https://upload.wikimedia.org/wikipedia/commons/3/3d/Sitta_carolinensis_-_White-breasted_Nuthatch_XC121069.ogg">
+<button disabled onclick="playButtonClick()" id="playButton">Start</button>
+
+<script>
+    // HTML элемент кнопки воспроизведения/паузы
+    const playButtonElement = document.getElementById('playButton');
+
+    // HTML источника аудио
+    const audioSourceElement = document.getElementById('audio_source');
+
+    // HTML элементы ползунков
+    const frontLeftRange = document.querySelector('#frontLeft');
+    const frontRightRange = document.querySelector('#frontRight');
+    const centerRange = document.querySelector('#center');
+    const subRange = document.querySelector('#sub');
+    const backLeftRange = document.querySelector('#backLeft');
+    const backRightRange = document.querySelector('#backRight');
+
+    // HTML элементы задержек
+    const frontLeftDelay = document.querySelector('#frontLeftDelay');
+    const frontRightDelay = document.querySelector('#frontRightDelay');
+    const centerDelay = document.querySelector('#centerDelay');
+    const subDelay = document.querySelector('#subDelay');
+    const backLeftDelay = document.querySelector('#backLeftDelay');
+    const backRightDelay = document.querySelector('#backRightDelay');
+
+    // Создаём аудио-контекст
+    const context = new window.AudioContext();
+    context.destination.channelCount = 6;
+
+    // Создаём 6 источников
+    const source1 = context.createBufferSource();
+    const source2 = context.createBufferSource();
+    const source3 = context.createBufferSource();
+    const source4 = context.createBufferSource();
+    const source5 = context.createBufferSource();
+    const source6 = context.createBufferSource();
+
+    // Загружаем аудио и помещаем его в буфер
+    fetch(audioSourceElement.value)
+        .then(resp => resp.arrayBuffer())
+        .then(buf => context.decodeAudioData(buf))
+        .then(audioBuffer => {
+            playButtonElement.disabled = false;
+
+            let analyser1 = context.createAnalyser();
+            let analyser2 = context.createAnalyser();
+            let analyser3 = context.createAnalyser();
+            let analyser4 = context.createAnalyser();
+            let analyser5 = context.createAnalyser();
+            let analyser6 = context.createAnalyser();
+
+            frontLeftGain.connect(analyser1);
+            frontRightGain.connect(analyser2);
+            centerGain.connect(analyser3);
+            subGain.connect(analyser4);
+            backLeftGain.connect(analyser5);
+            backRightGain.connect(analyser6);
+
+            const checkVolume = (analyser, volumeBar) => {
+                let frequencyData = new Uint8Array(analyser.frequencyBinCount);
+                analyser.getByteFrequencyData(frequencyData);
+
+                volumeBar.style.height = Math.average(frequencyData) * 4 + "px";
+                volumeBar.innerHTML = Math.floor(Math.average(frequencyData));
+
+            };
+
+            setInterval(function () {
+                checkVolume(analyser1, volumeBars.frontLeft);
+                checkVolume(analyser2, volumeBars.frontRight);
+                checkVolume(analyser3, volumeBars.center);
+                checkVolume(analyser4, volumeBars.sub);
+                checkVolume(analyser5, volumeBars.backLeft);
+                checkVolume(analyser6, volumeBars.backRight);
+            }, 10);
+
+            // Из буфера сохраняем в источники. Т.е. один аудиофайл для всех источников.
+            source1.buffer = source2.buffer = source3.buffer = source4.buffer = source5.buffer = source6.buffer = audioBuffer;
+            // source.playbackRate.value = 1;
+            // source.loop = true;
+            console.log('Ready', audioBuffer);
+        })
+        .catch(console.error);
+
+
+    // Запускаем/останавливаем воспроизведение
+    let isPlay = false;
+    window.playButtonClick = () => {
+        if (isPlay) {
+            source1.stop();
+            source2.stop();
+            source3.stop();
+            source4.stop();
+            source5.stop();
+            source6.stop();
+            playButtonElement.innerText = 'Play';
+            playButtonElement.disabled = true;
+        } else {
+            source1.start(context.currentTime + +frontLeftDelay.value);
+            source2.start(context.currentTime + +frontRightDelay.value);
+            source3.start(context.currentTime + +centerDelay.value);
+            source4.start(context.currentTime + +subDelay.value);
+            source5.start(context.currentTime + +backLeftDelay.value);
+            source6.start(context.currentTime + +backRightDelay.value);
+
+            frontLeftDelay.disabled = true;
+            frontRightDelay.disabled = true;
+            centerDelay.disabled = true;
+            subDelay.disabled = true;
+            backLeftDelay.disabled = true;
+            backRightDelay.disabled = true;
+
+            playButtonElement.innerText = 'Stop';
+            audioSourceElement.disabled = true;
+        }
+
+        isPlay = !isPlay;
+    };
+
+    /*
+        let synthDelay1 = context.createDelay(1.0);
+        let synthDelay2 = context.createDelay(2.0);
+        let synthDelay3 = context.createDelay(3.0);
+        let synthDelay4 = context.createDelay(4.0);
+        let synthDelay5 = context.createDelay(5.0);
+    */
+
+    let volumeBars = {
+        frontLeft: document.getElementById('frontLeftBarFill'),
+        frontRight: document.getElementById('frontRightBarFill'),
+        center: document.getElementById('centerBarFill'),
+        sub: document.getElementById('subBarFill'),
+        backLeft: document.getElementById('backLeftBarFill'),
+        backRight: document.getElementById('backRightBarFill'),
+    };
+
+
+    Math.average = function (arguments) {
+        let numbers;
+        if (arguments[0] instanceof Array) {
+            numbers = arguments[0];
+        } else if (typeof arguments[0] == "number") {
+            numbers = arguments;
+        }
+        let sum = 0;
+        let average = 0;
+        for (let i = 0; i < numbers.length; i++) {
+            sum += numbers[i];
+        }
+        average = sum / numbers.length;
+        return average;
+    };
+
+    // Создаём ноды GainNode для управления громкостью каналов
+    let frontLeftGain = context.createGain();
+    let frontRightGain = context.createGain();
+    let centerGain = context.createGain();
+    let subGain = context.createGain();
+    let backLeftGain = context.createGain();
+    let backRightGain = context.createGain();
+
+    // Привязываем ползунки к нодам GainNode
+    frontLeftRange.oninput = event => {
+        frontLeftGain.gain.value = event.target.value
+    };
+    frontRightRange.oninput = event => {
+        frontRightGain.gain.value = event.target.value
+    };
+    centerRange.oninput = event => {
+        centerGain.gain.value = event.target.value
+    };
+    subRange.oninput = event => {
+        subGain.gain.value = event.target.value
+    };
+    backLeftRange.oninput = event => {
+        backLeftGain.gain.value = event.target.value
+    };
+    backRightRange.oninput = event => {
+        backRightGain.gain.value = event.target.value
+    };
+
+    // Соединяем ноду источника звука с каждой из нод управления громкостью
+    source1.connect(frontLeftGain);
+    source2.connect(frontRightGain);
+    source3.connect(centerGain);
+    source4.connect(subGain);
+    source5.connect(backLeftGain);
+    source6.connect(backRightGain);
+
+    // Соединяем все ноды в одну
+    let merger = context.createChannelMerger(6);
+
+    frontLeftGain.connect(merger, 0, 0);
+    frontRightGain.connect(merger, 0, 1);
+    centerGain.connect(merger, 0, 2);
+    subGain.connect(merger, 0, 3);
+    backLeftGain.connect(merger, 0, 4);
+    backRightGain.connect(merger, 0, 5);
+
+    // Выводим звук
+    merger.connect(context.destination);
+
+</script>
+
+</body>
+</html>
