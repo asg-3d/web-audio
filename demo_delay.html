@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <title>5 channels</title>
+    <title>6 channels</title>
     <style>
         #volume {
             height: 340px;
@@ -125,6 +125,7 @@
 
 <input id="audio_source" type="text" value="https://upload.wikimedia.org/wikipedia/commons/3/3d/Sitta_carolinensis_-_White-breasted_Nuthatch_XC121069.ogg">
 <button disabled onclick="playButtonClick()" id="playButton">Start</button>
+<h3 id="channelsCount"></h3>
 
 <script>
     // HTML элемент кнопки воспроизведения/паузы
@@ -132,6 +133,9 @@
 
     // HTML источника аудио
     const audioSourceElement = document.getElementById('audio_source');
+
+    // HTML элемент вывода количества каналов
+    const channelsCountElement = document.getElementById('channelsCount');
 
     // HTML элементы ползунков
     const frontLeftRange = document.querySelector('#frontLeft');
@@ -151,7 +155,18 @@
 
     // Создаём аудио-контекст
     const context = new window.AudioContext();
-    context.destination.channelCount = 6;
+
+    // Определяем количество каналов в системе
+    const maxChannelCount = context.destination.maxChannelCount;
+    const hasMultiChannel = maxChannelCount === 6;
+    channelsCountElement.innerText = `У вас ${maxChannelCount} канала(ов).`;
+
+    if (hasMultiChannel) {
+        context.destination.channelCount = 6;
+    } else {
+        context.destination.channelCount = 2;
+    }
+
 
     // Создаём 6 источников
     const source1 = context.createBufferSource();
@@ -194,10 +209,12 @@
             setInterval(function () {
                 checkVolume(analyser1, volumeBars.frontLeft);
                 checkVolume(analyser2, volumeBars.frontRight);
-                checkVolume(analyser3, volumeBars.center);
-                checkVolume(analyser4, volumeBars.sub);
-                checkVolume(analyser5, volumeBars.backLeft);
-                checkVolume(analyser6, volumeBars.backRight);
+                if (hasMultiChannel) {
+                    checkVolume(analyser3, volumeBars.center);
+                    checkVolume(analyser4, volumeBars.sub);
+                    checkVolume(analyser5, volumeBars.backLeft);
+                    checkVolume(analyser6, volumeBars.backRight);
+                }
             }, 10);
 
             // Из буфера сохраняем в источники. Т.е. один аудиофайл для всех источников.
@@ -215,19 +232,24 @@
         if (isPlay) {
             source1.stop();
             source2.stop();
-            source3.stop();
-            source4.stop();
-            source5.stop();
-            source6.stop();
+            if (hasMultiChannel) {
+                source3.stop();
+                source4.stop();
+                source5.stop();
+                source6.stop();
+            }
             playButtonElement.innerText = 'Play';
             playButtonElement.disabled = true;
         } else {
             source1.start(context.currentTime + +frontLeftDelay.value);
             source2.start(context.currentTime + +frontRightDelay.value);
-            source3.start(context.currentTime + +centerDelay.value);
-            source4.start(context.currentTime + +subDelay.value);
-            source5.start(context.currentTime + +backLeftDelay.value);
-            source6.start(context.currentTime + +backRightDelay.value);
+            if (hasMultiChannel) {
+
+                source3.start(context.currentTime + +centerDelay.value);
+                source4.start(context.currentTime + +subDelay.value);
+                source5.start(context.currentTime + +backLeftDelay.value);
+                source6.start(context.currentTime + +backRightDelay.value);
+            }
 
             frontLeftDelay.disabled = true;
             frontRightDelay.disabled = true;
@@ -308,10 +330,13 @@
     // Соединяем ноду источника звука с каждой из нод управления громкостью
     source1.connect(frontLeftGain);
     source2.connect(frontRightGain);
-    source3.connect(centerGain);
-    source4.connect(subGain);
-    source5.connect(backLeftGain);
-    source6.connect(backRightGain);
+    if (hasMultiChannel) {
+
+        source3.connect(centerGain);
+        source4.connect(subGain);
+        source5.connect(backLeftGain);
+        source6.connect(backRightGain);
+    }
 
     // Соединяем все ноды в одну
     let merger = context.createChannelMerger(6);
